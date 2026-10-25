@@ -1,0 +1,217 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TourSafe 360 | Emergency Response</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="navbar">
+    <div class="logo">🛡️ TourSafe <span>360</span></div>
+    <div class="demo">● DEMO MODE</div>
+  </header>
+
+  <main class="container">
+    <section class="intro">
+      <p class="eyebrow">TOURIST SAFETY & INCIDENT RESPONSE</p>
+      <h1>Your safety comes first.</h1>
+      <p class="subtitle">
+        One SOS alert connects a tourist with the emergency response network.
+      </p>
+    </section>
+
+    <div class="dashboard">
+
+      <section class="left-column">
+
+        <div class="card">
+          <div class="status-heading">
+            <div>
+              <p class="eyebrow">LIVE SAFETY STATUS</p>
+              <h2 id="statusTitle">You are currently marked safe</h2>
+            </div>
+            <span id="statusBadge" class="badge safe">● SAFE</span>
+          </div>
+
+          <div class="location-box">
+            <div class="map-symbol">📍</div>
+            <div>
+              <h3>Varkala Beach, Kerala</h3>
+              <p>Example GPS: 8.7055° N, 76.7211° E</p>
+              <small>Tourist ID: TS360-TR-001</small>
+            </div>
+          </div>
+
+          <div id="alertBanner" class="alert-banner hidden"
+               role="status"></div>
+
+          <button id="sosButton" class="sos-button">
+            <span class="sos-symbol">🚨</span>
+            <span>
+              <strong>ACTIVATE SOS ALERT</strong>
+              <small>Notify emergency contacts in this demo</small>
+            </span>
+            <span class="arrow">→</span>
+          </button>
+
+          <p class="note">
+            Prototype only: this page does not send real emergency alerts.
+          </p>
+        </div>
+
+        <div class="card">
+          <p class="eyebrow">EMERGENCY RESPONSE NETWORK</p>
+          <h2>Alert recipients</h2>
+
+          <div class="recipient">
+            <div class="recipient-icon police">👮</div>
+            <div class="recipient-info">
+              <h3>Kerala Police</h3>
+              <p>Local Police Station · Varkala</p>
+            </div>
+            <span id="policeState" class="recipient-status">
+              On standby
+            </span>
+          </div>
+
+          <div class="recipient">
+            <div class="recipient-icon forest">🌳</div>
+            <div class="recipient-info">
+              <h3>Forest Department</h3>
+              <p>Varkala Range Office</p>
+            </div>
+            <span id="forestState" class="recipient-status">
+              On standby
+            </span>
+          </div>
+
+          <div class="recipient">
+            <div class="recipient-icon contact">👨‍👩‍👧</div>
+            <div class="recipient-info">
+              <h3>Emergency Contact</h3>
+              <p>Rajesh Sharma (Father) · Example contact</p>
+            </div>
+            <span id="contactState" class="recipient-status">
+              On standby
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="right-column">
+
+        <div class="card">
+          <p class="eyebrow">TOURIST PROFILE</p>
+          <div class="profile">
+            <div class="avatar">KR</div>
+            <div>
+              <h2>Kavisri R</h2>
+              <p>Tourist profile</p>
+            </div>
+          </div>
+
+          <div class="detail">
+            <span>Tourist ID</span>
+            <strong>TS360-TR-001</strong>
+          </div>
+          <div class="detail">
+            <span>Trip status</span>
+            <strong id="tripStatus">Safe</strong>
+          </div>
+          <div class="detail">
+            <span>Location</span>
+            <strong>Kerala, India</strong>
+          </div>
+        </div>
+
+        <div class="card">
+          <p class="eyebrow">INCIDENT MANAGEMENT</p>
+          <h2>From alert to safe</h2>
+
+          <div class="step">
+            <span>1</span>
+            <div>
+              <strong>Activate SOS</strong>
+              <p>The tourist confirms the emergency alert.</p>
+            </div>
+          </div>
+
+          <div class="step">
+            <span>2</span>
+            <div>
+              <strong>Notify recipients</strong>
+              <p>All three recipients are marked as alerted.</p>
+            </div>
+          </div>
+
+          <div class="step">
+            <span>3</span>
+            <div>
+              <strong>Resolve incident</strong>
+              <p>Confirm the tourist is safe before closing the incident.</p>
+            </div>
+          </div>
+
+          <button id="solvedButton" class="solved-button" disabled>
+            ✓ MARK INCIDENT SOLVED
+          </button>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      TourSafe 360 · Tourist Safety Prototype · 2026
+    </footer>
+  </main>
+
+  <!-- SOS Confirmation Popup -->
+  <div id="confirmModal" class="modal hidden"
+       role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+
+    <div class="modal-content">
+      <button id="closeModal" class="close-button"
+              aria-label="Close">×</button>
+
+      <div class="emergency-icon">🚨</div>
+      <p class="eyebrow">EMERGENCY RESPONSE</p>
+      <h2 id="modalTitle">Activate Emergency Alert?</h2>
+
+      <p class="modal-description">
+        Your consented location and incident details would be shared
+        with authorized emergency responders and your emergency contact
+        in a fully integrated system.
+      </p>
+
+      <div class="location-box">
+        <div class="map-symbol">📍</div>
+        <div>
+          <h3>Varkala Beach, Kerala</h3>
+          <p>Example GPS location</p>
+        </div>
+      </div>
+
+      <label class="consent">
+        <input type="checkbox" id="consentCheck">
+        I understand this is a demo and confirm the simulated alert.
+      </label>
+
+      <button id="confirmSOS" class="sos-button" disabled>
+        <span>🚨</span>
+        <strong>CONFIRM SOS ALERT</strong>
+        <span class="arrow">→</span>
+      </button>
+
+      <button id="cancelModal" class="cancel-button">
+        Cancel and return to Safety Hub
+      </button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
