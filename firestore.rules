@@ -1,0 +1,652 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Pillar 1: Global Default-Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'sit24it054@sairamtap.edu.in' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidLatLng(lat, lng) {
+      return lat is number && lat >= -90 && lat <= 90 &&
+             lng is number && lng >= -180 && lng <= 180;
+    }
+
+    function isValidEmailList(emails) {
+      return emails is list &&
+             emails.size() <= 10 &&
+             (emails.size() == 0 || (emails[0] is string && emails[0].size() <= 160));
+    }
+
+    function isValidTouristIdFormat(tid) {
+      return tid is string && tid.size() <= 32 && tid.matches('^TS360-KL-[0-9]{4}-[0-9]{6}$');
+    }
+
+    // Validation Blueprints
+    function isValidUserPublic(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'trackingConsent', 'sharingConsent', 'trackingIntervalSec', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly([
+               'uid',
+               'displayName',
+               'touristId',
+               'verificationToken',
+               'nationality',
+               'photoUrl',
+               'registeredDateIso',
+               'accountStatus',
+               'trackingConsent',
+               'sharingConsent',
+               'trackingIntervalSec',
+               'createdAt',
+               'updatedAt'
+             ]) &&
+             isValidId(data.uid) &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             (!('touristId' in data) || isValidTouristIdFormat(data.touristId)) &&
+             (!('verificationToken' in data) || isValidId(data.verificationToken)) &&
+             (!('nationality' in data) || (data.nationality is string && data.nationality.size() <= 60)) &&
+             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 2048)) &&
+             (!('registeredDateIso' in data) || (data.registeredDateIso is string && data.registeredDateIso.size() <= 40)) &&
+             (!('accountStatus' in data) || (data.accountStatus is string && data.accountStatus.size() <= 24 && data.accountStatus in ['active', 'suspended'])) &&
+             data.trackingConsent is bool &&
+             data.sharingConsent is bool &&
+             data.trackingIntervalSec is number && data.trackingIntervalSec >= 5 && data.trackingIntervalSec <= 300 &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isTouristIdPreservedOrMigrated() {
+      return !('touristId' in existing()) ||
+             existing().touristId == '' ||
+             (('touristId' in incoming()) && incoming().touristId == existing().touristId &&
+              (!('verificationToken' in existing()) || incoming().verificationToken == existing().verificationToken));
+    }
+
+    function isValidUserPrivate(data) {
+      return data.keys().hasAll(['uid', 'email', 'phone', 'travelStyle', 'budgetTier', 'updatedAt']) &&
+             data.keys().hasOnly([
+               'uid',
+               'email',
+               'phone',
+               'dob',
+               'stateRegion',
+               'country',
+               'personalInfoConsent',
+               'travelStyle',
+               'budgetTier',
+               'updatedAt'
+             ]) &&
+             data.uid == request.auth.uid &&
+             isValidId(data.uid) &&
+             data.email is string && data.email.size() <= 160 &&
+             data.phone is string && data.phone.size() <= 30 &&
+             (!('dob' in data) || (data.dob is string && data.dob.size() <= 20)) &&
+             (!('stateRegion' in data) || (data.stateRegion is string && data.stateRegion.size() <= 60)) &&
+             (!('country' in data) || (data.country is string && data.country.size() <= 60)) &&
+             (!('personalInfoConsent' in data) || data.personalInfoConsent is bool) &&
+             data.travelStyle is string && data.travelStyle.size() <= 40 &&
+             data.budgetTier is string && data.budgetTier.size() <= 30 &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidCounter(data) {
+      return data.keys().hasAll(['currentSeq', 'updatedAt']) &&
+             data.keys().hasOnly(['currentSeq', 'updatedAt']) &&
+             data.currentSeq is int && data.currentSeq >= 1 && data.currentSeq <= 99999999 &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidVerification(data) {
+      return data.keys().hasAll([
+               'token',
+               'touristId',
+               'uid',
+               'displayName',
+               'nationality',
+               'photoUrl',
+               'registeredDateIso',
+               'emailVerified',
+               'status',
+               'createdAt',
+               'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'token',
+               'touristId',
+               'uid',
+               'displayName',
+               'nationality',
+               'photoUrl',
+               'registeredDateIso',
+               'emailVerified',
+               'status',
+               'createdAt',
+               'updatedAt'
+             ]) &&
+             isValidId(data.token) &&
+             isValidTouristIdFormat(data.touristId) &&
+             isValidId(data.uid) &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             data.nationality is string && data.nationality.size() >= 1 && data.nationality.size() <= 60 &&
+             data.photoUrl is string && data.photoUrl.size() <= 2048 &&
+             data.registeredDateIso is string && data.registeredDateIso.size() >= 4 && data.registeredDateIso.size() <= 40 &&
+             data.emailVerified is bool &&
+             data.status is string && data.status.size() <= 24 && data.status in ['active', 'suspended'] &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidContact(data) {
+      return data.keys().hasAll(['ownerId', 'name', 'phone', 'email', 'relationship', 'notifyOnSos', 'notifyOnGeofence', 'createdAt']) &&
+             data.keys().hasOnly(['ownerId', 'name', 'phone', 'email', 'relationship', 'notifyOnSos', 'notifyOnGeofence', 'createdAt']) &&
+             data.ownerId == request.auth.uid &&
+             isValidId(data.ownerId) &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+             data.phone is string && data.phone.size() >= 3 && data.phone.size() <= 30 &&
+             data.email is string && data.email.size() <= 160 &&
+             data.relationship is string && data.relationship.size() >= 1 && data.relationship.size() <= 40 &&
+             data.notifyOnSos is bool &&
+             data.notifyOnGeofence is bool &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidGeofence(data) {
+      return data.keys().hasAll(['ownerId', 'name', 'latitude', 'longitude', 'radiusMeters', 'isActive', 'notifyContacts', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['ownerId', 'name', 'latitude', 'longitude', 'radiusMeters', 'isActive', 'notifyContacts', 'createdAt', 'updatedAt']) &&
+             data.ownerId == request.auth.uid &&
+             isValidId(data.ownerId) &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+             isValidLatLng(data.latitude, data.longitude) &&
+             data.radiusMeters is number && data.radiusMeters >= 50 && data.radiusMeters <= 50000 &&
+             data.isActive is bool &&
+             data.notifyContacts is bool &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidLocationLog(data) {
+      return data.keys().hasAll(['ownerId', 'tripId', 'latitude', 'longitude', 'accuracy', 'source', 'createdAt']) &&
+             data.keys().hasOnly(['ownerId', 'tripId', 'latitude', 'longitude', 'accuracy', 'source', 'createdAt']) &&
+             data.ownerId == request.auth.uid &&
+             isValidId(data.ownerId) &&
+             data.tripId is string && data.tripId.size() >= 1 && data.tripId.size() <= 64 &&
+             isValidLatLng(data.latitude, data.longitude) &&
+             data.accuracy is number && data.accuracy >= 0 && data.accuracy <= 50000 &&
+             data.source is string && data.source.size() <= 16 && data.source in ['gps', 'demo'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['ownerId', 'type', 'title', 'message', 'read', 'createdAt']) &&
+             data.keys().hasOnly(['ownerId', 'type', 'title', 'message', 'read', 'createdAt']) &&
+             data.ownerId == request.auth.uid &&
+             isValidId(data.ownerId) &&
+             data.type is string && data.type.size() <= 32 &&
+             data.type in ['geofence_entry', 'geofence_exit', 'emergency_sos', 'location_sharing', 'tracking_started', 'tracking_stopped', 'connection_lost', 'weather_alert', 'recommendation', 'system'] &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.message is string && data.message.size() >= 1 && data.message.size() <= 500 &&
+             data.read is bool &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidTrackingSession(data) {
+      return data.keys().hasAll(['ownerId', 'ownerName', 'tripName', 'latitude', 'longitude', 'accuracy', 'isActive', 'source', 'authorizedEmails', 'expiresAtMs', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['ownerId', 'ownerName', 'tripName', 'latitude', 'longitude', 'accuracy', 'isActive', 'source', 'authorizedEmails', 'expiresAtMs', 'createdAt', 'updatedAt']) &&
+             data.ownerId == request.auth.uid &&
+             isValidId(data.ownerId) &&
+             data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 80 &&
+             data.tripName is string && data.tripName.size() >= 1 && data.tripName.size() <= 100 &&
+             isValidLatLng(data.latitude, data.longitude) &&
+             data.accuracy is number && data.accuracy >= 0 && data.accuracy <= 50000 &&
+             data.isActive is bool &&
+             data.source is string && data.source.size() <= 16 && data.source in ['gps', 'demo'] &&
+             isValidEmailList(data.authorizedEmails) &&
+             data.expiresAtMs is number && data.expiresAtMs > 0 &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidEmergencyEvent(data) {
+      return data.keys().hasAll(['ownerId', 'ownerName', 'alertType', 'latitude', 'longitude', 'accuracy', 'notes', 'deliveryStatus', 'status', 'authorizedEmails', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['ownerId', 'ownerName', 'touristId', 'alertType', 'latitude', 'longitude', 'accuracy', 'notes', 'deliveryStatus', 'status', 'authorizedEmails', 'createdAt', 'updatedAt']) &&
+             isValidId(data.ownerId) &&
+             data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 80 &&
+             (!('touristId' in data) || (data.touristId is string && data.touristId.size() <= 32)) &&
+             data.alertType is string && data.alertType.size() <= 32 &&
+             data.alertType in ['sos_emergency', 'geofence_exit', 'unexpected_location', 'lost_communication', 'low_battery'] &&
+             isValidLatLng(data.latitude, data.longitude) &&
+             data.accuracy is number && data.accuracy >= 0 && data.accuracy <= 50000 &&
+             data.notes is string && data.notes.size() <= 400 &&
+             data.deliveryStatus is string && data.deliveryStatus.size() <= 40 &&
+             data.deliveryStatus in ['recorded_in_cloud', 'shared_session_updated'] &&
+             data.status is string && data.status.size() <= 24 &&
+             data.status in ['active', 'acknowledged', 'resolved'] &&
+             isValidEmailList(data.authorizedEmails) &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidDestination(data) {
+      return data.keys().hasAll(['name', 'region', 'category', 'latitude', 'longitude', 'safetyNotes', 'emergencyNumber', 'createdBy', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['name', 'region', 'district', 'category', 'latitude', 'longitude', 'safetyNotes', 'emergencyNumber', 'createdBy', 'createdAt', 'updatedAt']) &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.region is string && data.region.size() >= 1 && data.region.size() <= 80 &&
+             (!('district' in data) || (data.district is string && data.district.size() <= 40)) &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 40 &&
+             isValidLatLng(data.latitude, data.longitude) &&
+             data.safetyNotes is string && data.safetyNotes.size() >= 1 && data.safetyNotes.size() <= 600 &&
+             data.emergencyNumber is string && data.emergencyNumber.size() >= 1 && data.emergencyNumber.size() <= 30 &&
+             isValidId(data.createdBy) &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidSafetyAlert(data) {
+      return data.keys().hasAll(['title', 'district', 'severity', 'category', 'sourceAuthority', 'issuedAtIso', 'validUntilIso', 'description', 'createdBy', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['title', 'district', 'severity', 'category', 'sourceAuthority', 'issuedAtIso', 'validUntilIso', 'description', 'createdBy', 'createdAt', 'updatedAt']) &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
+             data.district is string && data.district.size() >= 1 && data.district.size() <= 40 &&
+             data.severity is string && data.severity.size() <= 24 && data.severity in ['advisory', 'watch', 'warning'] &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 40 &&
+             data.sourceAuthority is string && data.sourceAuthority.size() >= 1 && data.sourceAuthority.size() <= 100 &&
+             data.issuedAtIso is string && data.issuedAtIso.size() >= 4 && data.issuedAtIso.size() <= 40 &&
+             data.validUntilIso is string && data.validUntilIso.size() >= 4 && data.validUntilIso.size() <= 40 &&
+             data.description is string && data.description.size() >= 1 && data.description.size() <= 800 &&
+             isValidId(data.createdBy) &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidReport(data) {
+      return data.keys().hasAll(['reporterId', 'reporterName', 'category', 'description', 'status', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['reporterId', 'reporterName', 'category', 'description', 'status', 'createdAt', 'updatedAt']) &&
+             isValidId(data.reporterId) &&
+             data.reporterName is string && data.reporterName.size() >= 1 && data.reporterName.size() <= 80 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 40 &&
+             data.description is string && data.description.size() >= 1 && data.description.size() <= 600 &&
+             data.status is string && data.status.size() <= 24 &&
+             data.status in ['open', 'investigating', 'closed'] &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidAdminRecord(data) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt']) &&
+             data.keys().hasOnly(['uid', 'email', 'createdAt']) &&
+             isValidId(data.uid) &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+             data.createdAt is timestamp;
+    }
+
+    // Connection health check doc
+    match /test/connection {
+      allow get: if isSignedIn();
+      allow list, write: if false;
+    }
+
+    // Atomic Sequence Counter for TS360-KL-YYYY-XXXXXX
+    match /systemCounters/{counterId} {
+      allow get: if isSignedIn() && counterId == 'touristId';
+      allow list: if false;
+      allow create: if isSignedIn() &&
+                    counterId == 'touristId' &&
+                    isValidCounter(incoming()) &&
+                    incoming().currentSeq == 1 &&
+                    incoming().updatedAt == request.time;
+      allow update: if isSignedIn() &&
+                    counterId == 'touristId' &&
+                    isValidCounter(incoming()) &&
+                    incoming().currentSeq == existing().currentSeq + 1 &&
+                    incoming().updatedAt == request.time &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['currentSeq', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // QR Code Verification Card Registry (Non-PII Public Status Only; Opaque Token Required for Get)
+    match /touristVerifications/{token} {
+      allow get: if isValidId(token) && existing().touristId.size() <= 32;
+      allow list: if isAdmin();
+      allow create: if isSignedIn() &&
+                    isValidId(token) &&
+                    isValidVerification(incoming()) &&
+                    incoming().token == token &&
+                    incoming().uid == request.auth.uid &&
+                    incoming().status == 'active' &&
+                    incoming().createdAt == request.time &&
+                    incoming().updatedAt == request.time;
+      allow update: if isSignedIn() &&
+                    isValidId(token) &&
+                    isValidVerification(incoming()) &&
+                    incoming().token == existing().token &&
+                    incoming().touristId == existing().touristId &&
+                    incoming().uid == existing().uid &&
+                    incoming().registeredDateIso == existing().registeredDateIso &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().updatedAt == request.time && (
+                      (isOwner(existing().uid) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'nationality', 'photoUrl', 'emailVerified', 'updatedAt'])) ||
+                      (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+                    );
+      allow delete: if isAdmin() && isValidId(token);
+    }
+
+    // 1. Users Public Summary & Subcollections
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) &&
+                    isValidId(userId) &&
+                    isValidUserPublic(incoming()) &&
+                    incoming().uid == request.auth.uid &&
+                    (!('accountStatus' in incoming()) || incoming().accountStatus == 'active') &&
+                    incoming().createdAt == request.time &&
+                    incoming().updatedAt == request.time;
+      allow update: if isSignedIn() &&
+                    isValidId(userId) &&
+                    isValidUserPublic(incoming()) &&
+                    incoming().uid == existing().uid &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().updatedAt == request.time && (
+                      (isOwner(userId) &&
+                       isTouristIdPreservedOrMigrated() &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'displayName',
+                         'touristId',
+                         'verificationToken',
+                         'nationality',
+                         'photoUrl',
+                         'registeredDateIso',
+                         'trackingConsent',
+                         'sharingConsent',
+                         'trackingIntervalSec',
+                         'updatedAt'
+                       ])) ||
+                      (isAdmin() &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['accountStatus', 'updatedAt']))
+                    );
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      // Split PII Collection: Strictly owner-only
+      match /private/{docId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(docId);
+        allow list: if false;
+        allow create: if isOwner(userId) &&
+                      isValidId(userId) &&
+                      docId == 'info' &&
+                      isValidUserPrivate(incoming()) &&
+                      incoming().updatedAt == request.time &&
+                      exists(/databases/$(database)/documents/users/$(userId));
+        allow update: if isOwner(userId) &&
+                      isValidId(userId) &&
+                      docId == 'info' &&
+                      isValidUserPrivate(incoming()) &&
+                      incoming().uid == existing().uid &&
+                      incoming().updatedAt == request.time &&
+                      incoming().diff(existing()).affectedKeys().hasOnly([
+                        'email',
+                        'phone',
+                        'dob',
+                        'stateRegion',
+                        'country',
+                        'personalInfoConsent',
+                        'travelStyle',
+                        'budgetTier',
+                        'updatedAt'
+                      ]) &&
+                      exists(/databases/$(database)/documents/users/$(userId));
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(docId);
+      }
+
+      // Trusted Emergency Contacts: Strictly owner-only
+      match /contacts/{contactId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(contactId) && existing().ownerId == request.auth.uid;
+        allow list: if isOwner(userId) && existing().ownerId == request.auth.uid;
+        allow create: if isOwner(userId) &&
+                      isValidId(userId) &&
+                      isValidId(contactId) &&
+                      isValidContact(incoming()) &&
+                      incoming().createdAt == request.time &&
+                      exists(/databases/$(database)/documents/users/$(userId));
+        allow update: if isOwner(userId) &&
+                      isValidId(userId) &&
+                      isValidId(contactId) &&
+                      isValidContact(incoming()) &&
+                      incoming().ownerId == existing().ownerId &&
+                      incoming().createdAt == existing().createdAt &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'email', 'relationship', 'notifyOnSos', 'notifyOnGeofence']) &&
+                      exists(/databases/$(database)/documents/users/$(userId));
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(contactId);
+      }
+
+      // Geofences: Strictly owner-only
+      match /geofences/{geofenceId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(geofenceId) && existing().ownerId == request.auth.uid;
+        allow list: if isOwner(userId) && existing().ownerId == request.auth.uid;
+        allow create: if isOwner(userId) &&
+                      isValidId(userId) &&
+                      isValidId(geofenceId) &&
+                      isValidGeofence(incoming()) &&
+                      incoming().createdAt == request.time &&
+                      incoming().updatedAt == request.time &&
+                      exists(/databases/$(database)/documents/users/$(userId));
+        allow update: if isOwner(userId) &&
+                      isValidId(userId) &&
+                      isValidId(geofenceId) &&
+                      isValidGeofence(incoming()) &&
+                      incoming().ownerId == existing().ownerId &&
+                      incoming().createdAt == existing().createdAt &&
+                      incoming().updatedAt == request.time &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['name', 'latitude', 'longitude', 'radiusMeters', 'isActive', 'notifyContacts', 'updatedAt']) &&
+                      exists(/databases/$(database)/documents/users/$(userId));
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(geofenceId);
+      }
+
+      // Private GPS Location History: Strictly owner-only (Admins explicitly excluded per Module 17)
+      match /locationLogs/{logId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(logId) && existing().ownerId == request.auth.uid;
+        allow list: if isOwner(userId) && existing().ownerId == request.auth.uid;
+        allow create: if isOwner(userId) &&
+                      isValidId(userId) &&
+                      isValidId(logId) &&
+                      isValidLocationLog(incoming()) &&
+                      incoming().createdAt == request.time &&
+                      exists(/databases/$(database)/documents/users/$(userId));
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(logId);
+      }
+
+      // User Notifications: Strictly owner-only
+      match /notifications/{notifId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(notifId) && existing().ownerId == request.auth.uid;
+        allow list: if isOwner(userId) && existing().ownerId == request.auth.uid;
+        allow create: if isOwner(userId) &&
+                      isValidId(userId) &&
+                      isValidId(notifId) &&
+                      isValidNotification(incoming()) &&
+                      incoming().createdAt == request.time &&
+                      exists(/databases/$(database)/documents/users/$(userId));
+        allow update: if isOwner(userId) &&
+                      isValidId(userId) &&
+                      isValidId(notifId) &&
+                      isValidNotification(incoming()) &&
+                      incoming().ownerId == existing().ownerId &&
+                      incoming().createdAt == existing().createdAt &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['read']) &&
+                      exists(/databases/$(database)/documents/users/$(userId));
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(notifId);
+      }
+    }
+
+    // 2. Wireless Live Location Sharing Sessions
+    match /trackingSessions/{sessionId} {
+      allow get: if isValidId(sessionId) && isSignedIn() && (
+                   existing().ownerId == request.auth.uid ||
+                   (isVerifiedUser() && request.auth.token.email in existing().authorizedEmails)
+                 );
+      allow list: if isSignedIn() && (
+                    existing().ownerId == request.auth.uid ||
+                    (isVerifiedUser() && request.auth.token.email in existing().authorizedEmails)
+                  );
+      allow create: if isSignedIn() &&
+                    isValidId(sessionId) &&
+                    isValidTrackingSession(incoming()) &&
+                    incoming().createdAt == request.time &&
+                    incoming().updatedAt == request.time &&
+                    exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      allow update: if isSignedIn() &&
+                    isValidId(sessionId) &&
+                    isValidTrackingSession(incoming()) &&
+                    existing().ownerId == request.auth.uid &&
+                    incoming().ownerId == existing().ownerId &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().updatedAt == request.time && (
+                      incoming().diff(existing()).affectedKeys().hasOnly(['latitude', 'longitude', 'accuracy', 'source', 'updatedAt']) ||
+                      incoming().diff(existing()).affectedKeys().hasOnly(['isActive', 'authorizedEmails', 'expiresAtMs', 'tripName', 'updatedAt'])
+                    );
+      allow delete: if isSignedIn() && isValidId(sessionId) && existing().ownerId == request.auth.uid;
+    }
+
+    // 3. Authorized Emergency Events
+    match /emergencyEvents/{eventId} {
+      allow get: if isValidId(eventId) && isSignedIn() && (
+                   existing().ownerId == request.auth.uid ||
+                   (isVerifiedUser() && request.auth.token.email in existing().authorizedEmails) ||
+                   isAdmin()
+                 );
+      allow list: if isSignedIn() && (
+                    existing().ownerId == request.auth.uid ||
+                    (isVerifiedUser() && request.auth.token.email in existing().authorizedEmails) ||
+                    isAdmin()
+                  );
+      allow create: if isSignedIn() &&
+                    isValidId(eventId) &&
+                    isValidEmergencyEvent(incoming()) &&
+                    incoming().ownerId == request.auth.uid &&
+                    incoming().status == 'active' &&
+                    incoming().createdAt == request.time &&
+                    incoming().updatedAt == request.time &&
+                    exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      allow update: if isSignedIn() &&
+                    isValidId(eventId) &&
+                    isValidEmergencyEvent(incoming()) &&
+                    incoming().ownerId == existing().ownerId &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().updatedAt == request.time && (
+                      isAdmin() || (
+                        existing().ownerId == request.auth.uid &&
+                        existing().status != 'resolved' &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'notes', 'deliveryStatus', 'updatedAt'])
+                      )
+                    );
+      allow delete: if isSignedIn() && isValidId(eventId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    // 4. Curated Kerala Tourism Destinations
+    match /destinations/{destId} {
+      allow get: if isValidId(destId) && isSignedIn() && existing().name.size() <= 100;
+      allow list: if isSignedIn() && existing().name.size() <= 100;
+      allow create: if isAdmin() &&
+                    isValidId(destId) &&
+                    isValidDestination(incoming()) &&
+                    incoming().createdBy == request.auth.uid &&
+                    incoming().createdAt == request.time &&
+                    incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+                    isValidId(destId) &&
+                    isValidDestination(incoming()) &&
+                    incoming().createdBy == existing().createdBy &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().updatedAt == request.time &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'region', 'district', 'category', 'latitude', 'longitude', 'safetyNotes', 'emergencyNumber', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(destId);
+    }
+
+    // 5. Kerala Safety & Weather Advisories
+    match /safetyAlerts/{alertId} {
+      allow get: if isValidId(alertId) && existing().title.size() <= 140;
+      allow list: if existing().title.size() <= 140;
+      allow create: if isAdmin() &&
+                    isValidId(alertId) &&
+                    isValidSafetyAlert(incoming()) &&
+                    incoming().createdBy == request.auth.uid &&
+                    incoming().createdAt == request.time &&
+                    incoming().updatedAt == request.time;
+      allow update: if isAdmin() &&
+                    isValidId(alertId) &&
+                    isValidSafetyAlert(incoming()) &&
+                    incoming().createdBy == existing().createdBy &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().updatedAt == request.time &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['title', 'district', 'severity', 'category', 'sourceAuthority', 'issuedAtIso', 'validUntilIso', 'description', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(alertId);
+    }
+
+    // 6. Tourist Safety Reports
+    match /reports/{reportId} {
+      allow get: if isValidId(reportId) && isSignedIn() && (existing().reporterId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().reporterId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+                    isValidId(reportId) &&
+                    isValidReport(incoming()) &&
+                    incoming().reporterId == request.auth.uid &&
+                    incoming().status == 'open' &&
+                    incoming().createdAt == request.time &&
+                    incoming().updatedAt == request.time &&
+                    exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      allow update: if isSignedIn() &&
+                    isValidId(reportId) &&
+                    isValidReport(incoming()) &&
+                    incoming().reporterId == existing().reporterId &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().updatedAt == request.time && (
+                      (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'description', 'updatedAt'])) ||
+                      (existing().reporterId == request.auth.uid && existing().status != 'closed' && incoming().diff(existing()).affectedKeys().hasOnly(['description', 'status', 'updatedAt']))
+                    );
+      allow delete: if isAdmin() && isValidId(reportId);
+    }
+
+    // 7. Admin Registry
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && (isOwner(adminId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAdmin() &&
+                    isValidId(adminId) &&
+                    isValidAdminRecord(incoming()) &&
+                    incoming().uid == adminId &&
+                    incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(adminId);
+    }
+  }
+}

@@ -1,0 +1,678 @@
+{
+  "entities": {
+    "UserPublic": {
+      "title": "User Public Profile",
+      "description": "Non-PII public profile summary and Kerala Tourist ID metadata for registered TourSafe 360 users.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the tourist."
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Full name of the tourist."
+        },
+        "touristId": {
+          "type": "string",
+          "maxLength": 32,
+          "pattern": "^TS360-KL-[0-9]{4}-[0-9]{6}$",
+          "description": "Immutable unique Kerala Tourist ID assigned once upon registration."
+        },
+        "verificationToken": {
+          "type": "string",
+          "maxLength": 80,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Opaque token linking to the public QR verification record."
+        },
+        "nationality": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Nationality displayed on Digital Tourist ID Card."
+        },
+        "photoUrl": {
+          "type": "string",
+          "maxLength": 2048,
+          "description": "Optional profile photograph URL or compact data avatar."
+        },
+        "registeredDateIso": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "ISO registration date string."
+        },
+        "accountStatus": {
+          "type": "string",
+          "enum": ["active", "suspended"],
+          "maxLength": 24,
+          "description": "Account standing managed by administrators."
+        },
+        "trackingConsent": {
+          "type": "boolean",
+          "description": "Explicit user consent for GPS location tracking."
+        },
+        "sharingConsent": {
+          "type": "boolean",
+          "description": "Explicit user consent for live wireless location sharing."
+        },
+        "trackingIntervalSec": {
+          "type": "number",
+          "description": "Configured GPS update interval in seconds."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Account registration server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Profile update server timestamp."
+        }
+      },
+      "required": ["uid", "displayName", "trackingConsent", "sharingConsent", "trackingIntervalSec", "createdAt", "updatedAt"]
+    },
+    "UserPrivateInfo": {
+      "title": "User Private PII Info",
+      "description": "Strictly isolated PII document containing email, mobile phone, DOB, state, country, and travel preferences.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "dob": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "stateRegion": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "country": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "personalInfoConsent": {
+          "type": "boolean"
+        },
+        "travelStyle": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "budgetTier": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "phone", "travelStyle", "budgetTier", "updatedAt"]
+    },
+    "TouristIdCounter": {
+      "title": "Atomic Tourist ID Sequence Counter",
+      "description": "Transactional sequence document ensuring duplicate-free sequential TS360-KL-YYYY-XXXXXX IDs.",
+      "type": "object",
+      "properties": {
+        "currentSeq": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["currentSeq", "updatedAt"]
+    },
+    "TouristVerification": {
+      "title": "Digital Tourist ID QR Verification Record",
+      "description": "Minimal non-PII public verification card record keyed by opaque QR verification token.",
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string",
+          "maxLength": 80,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "touristId": {
+          "type": "string",
+          "maxLength": 32,
+          "pattern": "^TS360-KL-[0-9]{4}-[0-9]{6}$"
+        },
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "nationality": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "photoUrl": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "registeredDateIso": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "emailVerified": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "suspended"],
+          "maxLength": 24
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["token", "touristId", "uid", "displayName", "nationality", "photoUrl", "registeredDateIso", "emailVerified", "status", "createdAt", "updatedAt"]
+    },
+    "EmergencyContact": {
+      "title": "Emergency Contact",
+      "description": "Trusted emergency contact registered by the user.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "relationship": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "notifyOnSos": {
+          "type": "boolean"
+        },
+        "notifyOnGeofence": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["ownerId", "name", "phone", "email", "relationship", "notifyOnSos", "notifyOnGeofence", "createdAt"]
+    },
+    "Geofence": {
+      "title": "Geofence Zone",
+      "description": "Circular geofence boundary defined by latitude, longitude, and radius in meters.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "radiusMeters": {
+          "type": "number"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "notifyContacts": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["ownerId", "name", "latitude", "longitude", "radiusMeters", "isActive", "notifyContacts", "createdAt", "updatedAt"]
+    },
+    "LocationLog": {
+      "title": "GPS Location Log",
+      "description": "Private GPS coordinate record stored during active authorized tracking.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "tripId": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "accuracy": {
+          "type": "number"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["gps", "demo"],
+          "maxLength": 16
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["ownerId", "tripId", "latitude", "longitude", "accuracy", "source", "createdAt"]
+    },
+    "NotificationItem": {
+      "title": "User Notification",
+      "description": "In-app notification generated for tracking, geofence, SOS, weather, or recommendation events.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["geofence_entry", "geofence_exit", "emergency_sos", "location_sharing", "tracking_started", "tracking_stopped", "connection_lost", "weather_alert", "recommendation", "system"],
+          "maxLength": 32
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "read": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["ownerId", "type", "title", "message", "read", "createdAt"]
+    },
+    "TrackingSession": {
+      "title": "Wireless Live Location Sharing Session",
+      "description": "Internet-based real-time coordinate sharing session with access control and expiration.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "tripName": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "accuracy": {
+          "type": "number"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["gps", "demo"],
+          "maxLength": 16
+        },
+        "authorizedEmails": {
+          "type": "array",
+          "description": "Up to 10 authorized contact email addresses permitted to read live session coordinates."
+        },
+        "expiresAtMs": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["ownerId", "ownerName", "tripName", "latitude", "longitude", "accuracy", "isActive", "source", "authorizedEmails", "expiresAtMs", "createdAt", "updatedAt"]
+    },
+    "EmergencyEvent": {
+      "title": "Authorized Emergency Alert Event",
+      "description": "Emergency SOS, geofence exit, or safety incident event recorded with delivery confirmation status.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "touristId": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "alertType": {
+          "type": "string",
+          "enum": ["sos_emergency", "geofence_exit", "unexpected_location", "lost_communication", "low_battery"],
+          "maxLength": 32
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "accuracy": {
+          "type": "number"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "deliveryStatus": {
+          "type": "string",
+          "enum": ["recorded_in_cloud", "shared_session_updated"],
+          "maxLength": 40
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "acknowledged", "resolved"],
+          "maxLength": 24
+        },
+        "authorizedEmails": {
+          "type": "array"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["ownerId", "ownerName", "alertType", "latitude", "longitude", "accuracy", "notes", "deliveryStatus", "status", "authorizedEmails", "createdAt", "updatedAt"]
+    },
+    "DestinationGuide": {
+      "title": "Curated Kerala Destination Information",
+      "description": "Admin-managed Kerala tourism destination safety guide.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "region": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "district": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "safetyNotes": {
+          "type": "string",
+          "maxLength": 600
+        },
+        "emergencyNumber": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "createdBy": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["name", "region", "category", "latitude", "longitude", "safetyNotes", "emergencyNumber", "createdBy", "createdAt", "updatedAt"]
+    },
+    "SafetyAlert": {
+      "title": "Kerala Official Advisory & Safety Alert",
+      "description": "Administrator-published Kerala tourism & weather safety advisory with explicit authority attribution.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 140
+        },
+        "district": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["advisory", "watch", "warning"],
+          "maxLength": 24
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "sourceAuthority": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "issuedAtIso": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "validUntilIso": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 800
+        },
+        "createdBy": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["title", "district", "severity", "category", "sourceAuthority", "issuedAtIso", "validUntilIso", "description", "createdBy", "createdAt", "updatedAt"]
+    },
+    "SafetyReport": {
+      "title": "Safety Report",
+      "description": "Tourist-submitted safety report reviewed by administrators.",
+      "type": "object",
+      "properties": {
+        "reporterId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "reporterName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 600
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "investigating", "closed"],
+          "maxLength": 24
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["reporterId", "reporterName", "category", "description", "status", "createdAt", "updatedAt"]
+    },
+    "AdminRecord": {
+      "title": "Administrator Record",
+      "description": "Trusted database record designating administrator UIDs.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserPublic",
+      "description": "Public non-PII user summary and immutable Tourist ID visible to owner and administrators."
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": "UserPrivateInfo",
+      "description": "Strictly isolated PII document readable and writable ONLY by the user owner."
+    },
+    "/systemCounters/{counterId}": {
+      "schema": "TouristIdCounter",
+      "description": "Atomic sequence counter for TS360-KL-YYYY-XXXXXX Tourist ID allocation."
+    },
+    "/touristVerifications/{token}": {
+      "schema": "TouristVerification",
+      "description": "Public non-PII QR verification card lookup by opaque token; list restricted to admins."
+    },
+    "/users/{userId}/contacts/{contactId}": {
+      "schema": "EmergencyContact",
+      "description": "Trusted emergency contacts belonging to the user."
+    },
+    "/users/{userId}/geofences/{geofenceId}": {
+      "schema": "Geofence",
+      "description": "Custom circular geofence boundaries configured by the user."
+    },
+    "/users/{userId}/locationLogs/{logId}": {
+      "schema": "LocationLog",
+      "description": "Private GPS location history strictly restricted to the user owner (admins explicitly excluded)."
+    },
+    "/users/{userId}/notifications/{notifId}": {
+      "schema": "NotificationItem",
+      "description": "In-app notifications belonging to the user."
+    },
+    "/trackingSessions/{sessionId}": {
+      "schema": "TrackingSession",
+      "description": "Wireless real-time location sharing session accessible only to owner and authorized contact emails."
+    },
+    "/emergencyEvents/{eventId}": {
+      "schema": "EmergencyEvent",
+      "description": "Authorized emergency alerts accessible to owner, authorized contacts, and administrators."
+    },
+    "/destinations/{destId}": {
+      "schema": "DestinationGuide",
+      "description": "Curated Kerala destination safety guides readable by signed-in users and managed by admins."
+    },
+    "/safetyAlerts/{alertId}": {
+      "schema": "SafetyAlert",
+      "description": "Kerala safety & weather advisories managed by admins and readable by tourists."
+    },
+    "/reports/{reportId}": {
+      "schema": "SafetyReport",
+      "description": "Tourist safety reports accessible to the reporter and administrators."
+    },
+    "/admins/{adminId}": {
+      "schema": "AdminRecord",
+      "description": "Trusted admin registry."
+    }
+  }
+}
